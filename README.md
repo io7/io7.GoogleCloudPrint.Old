@@ -2,9 +2,9 @@
 
 **This repository shamelessly copies code from https://github.com/chrisntr/GoogleCloudPrintMonodroid**
 
-The problem with the Monodroid implementation is that it uses the old OpenID authentication mechanism, which Google has since deprecated.
+The problem with the Monodroid implementation is that it uses the old authentication mechanism, which Google has since deprecated.
 
-This library uses Google's OAuth2 library from https://www.nuget.org/packages/Google.Apis.Oauth2.v2/
+This library uses Google's OAuth2 library from https://www.nuget.org/packages/Google.Apis.Oauth2.v2/. This enables you to print to a cloud enabled printer using a Service Account.
 
 ## Usage
 
