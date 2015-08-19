@@ -1,4 +1,4 @@
-# GoogleCloudPrint for C#
+# GoogleCloudPrint for C&#35;
 
 **This repository shamelessly copies code from https://github.com/chrisntr/GoogleCloudPrintMonodroid**
 
