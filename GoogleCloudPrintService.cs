@@ -181,12 +181,22 @@ namespace GoogleCloudPrint
 
         public CloudPrintJob PrintDocument(string printerId, string title, byte[] document, string mimeType)
         {
+            var content = "data:" + mimeType + ";base64," + Convert.ToBase64String(document);
+
+            return PrintDocument(printerId, title, content, "dataUrl");
+        }
+
+        public CloudPrintJob PrintDocument(string printerId, string title, string url)
+        {
+            return PrintDocument(printerId, title, url, "url");
+        }
+
+        public CloudPrintJob PrintDocument(string printerId, string title, string content, string contentType)
+        {
             try
             {
                 RefreshAccessToken();
                 var authCode = _credentials.Token.AccessToken;
-
-                var b64 = Convert.ToBase64String(document);
 
                 var request = (HttpWebRequest) WebRequest.Create("https://www.google.com/cloudprint/submit?output=json&printerid=" + printerId);
                 request.Method = "POST";
@@ -200,18 +210,17 @@ namespace GoogleCloudPrint
 
                 var p = new PostData();
 
-                p.Parameters.Add(new PostDataParam {Name = "printerid", Value = printerId, Type = PostDataParamType.Field});
-                p.Parameters.Add(new PostDataParam {Name = "capabilities", Value = "{\"capabilities\":[{}]}", Type = PostDataParamType.Field});
-                p.Parameters.Add(new PostDataParam {Name = "contentType", Value = "dataUrl", Type = PostDataParamType.Field});
-                p.Parameters.Add(new PostDataParam {Name = "title", Value = title, Type = PostDataParamType.Field});
+                p.Parameters.Add(new PostDataParam { Name = "printerid", Value = printerId, Type = PostDataParamType.Field });
+                p.Parameters.Add(new PostDataParam { Name = "capabilities", Value = "{\"capabilities\":[{}]}", Type = PostDataParamType.Field });
+                p.Parameters.Add(new PostDataParam { Name = "contentType", Value = contentType, Type = PostDataParamType.Field });
+                p.Parameters.Add(new PostDataParam { Name = "title", Value = title, Type = PostDataParamType.Field });
 
-                p.Parameters.Add(new PostDataParam
-                {
-                    Name = "content",
-                    Type = PostDataParamType.Field,
-                    Value = "data:" + mimeType + ";base64," + b64
-                });
-
+                p.Parameters.Add(new PostDataParam 
+				{ 
+				    Name = "content",
+					Type = PostDataParamType.Field, 
+					Value = content
+				});
                 var postData = p.GetPostData();
                 var data = Encoding.UTF8.GetBytes(postData);
 
