@@ -63,49 +63,12 @@ namespace GoogleCloudPrint
         {
             try
             {
-                RefreshAccessToken();
-                var authCode = _credentials.Token.AccessToken;
-
-                var request = (HttpWebRequest) WebRequest.Create("https://www.google.com/cloudprint/unshare?");
-                request.Method = "POST";
-
-                // Setup the web request
-                request.ServicePoint.Expect100Continue = false;
-
-                // Add the headers
-                request.Headers.Add("X-CloudPrint-Proxy", _source);
-                request.Headers.Add("Authorization", "OAuth " + authCode);
-
                 var p = new PostData();
 
-                p.Parameters.Add(new PostDataParam {Name = "printerid", Value = printerId, Type = PostDataParamType.Field});
-                p.Parameters.Add(new PostDataParam {Name = "email", Value = email, Type = PostDataParamType.Field});
+                p.Parameters.Add(new PostDataParam { Name = "printerid", Value = printerId, Type = PostDataParamType.Field });
+                p.Parameters.Add(new PostDataParam { Name = "email", Value = email, Type = PostDataParamType.Field });
 
-                var postData = p.GetPostData();
-                var data = Encoding.UTF8.GetBytes(postData);
-
-                request.ContentType = "multipart/form-data; boundary=" + p.Boundary;
-
-                var stream = request.GetRequestStream();
-                stream.Write(data, 0, data.Length);
-                stream.Close();
-
-                // Get response
-                var response = (HttpWebResponse) request.GetResponse();
-                var responseStream = response.GetResponseStream();
-
-                if (responseStream == null)
-                {
-                    throw new Exception("Response stream was null!");
-                }
-
-                var responseContent = new StreamReader(responseStream).ReadToEnd();
-                var serializer = new DataContractJsonSerializer(typeof(CloudPrintShare));
-
-                var ms = new MemoryStream(Encoding.Unicode.GetBytes(responseContent));
-                var shareJob = serializer.ReadObject(ms) as CloudPrintShare;
-
-                return shareJob;
+                return GCPServiceCall<CloudPrintShare>("unshare", p);
             }
             catch (Exception ex)
             {
@@ -125,53 +88,14 @@ namespace GoogleCloudPrint
         {
             try
             {
-                RefreshAccessToken();
-                var authCode = _credentials.Token.AccessToken;
-
-                var request = (HttpWebRequest) WebRequest.Create("https://www.google.com/cloudprint/share?");
-                request.Method = "POST";
-
-                // Setup the web request
-                request.ServicePoint.Expect100Continue = false;
-
-                // Add the headers
-                request.Headers.Add("X-CloudPrint-Proxy", _source);
-                request.Headers.Add("Authorization", "OAuth " + authCode);
-
                 var p = new PostData();
 
-                p.Parameters.Add(new PostDataParam {Name = "printerid", Value = printerId, Type = PostDataParamType.Field});
-                p.Parameters.Add(new PostDataParam {Name = "email", Value = email, Type = PostDataParamType.Field});
-                p.Parameters.Add(new PostDataParam {Name = "role", Value = "APPENDER", Type = PostDataParamType.Field});
-                p.Parameters.Add(new PostDataParam {Name = "skip_notification", Value = notify.ToString(), Type = PostDataParamType.Field});
+                p.Parameters.Add(new PostDataParam { Name = "printerid", Value = printerId, Type = PostDataParamType.Field });
+                p.Parameters.Add(new PostDataParam { Name = "email", Value = email, Type = PostDataParamType.Field });
+                p.Parameters.Add(new PostDataParam { Name = "role", Value = "APPENDER", Type = PostDataParamType.Field });
+                p.Parameters.Add(new PostDataParam { Name = "skip_notification", Value = notify.ToString(), Type = PostDataParamType.Field });
 
-                var postData = p.GetPostData();
-
-
-                byte[] data = Encoding.UTF8.GetBytes(postData);
-
-                request.ContentType = "multipart/form-data; boundary=" + p.Boundary;
-
-                Stream stream = request.GetRequestStream();
-                stream.Write(data, 0, data.Length);
-                stream.Close();
-
-                // Get response
-                var response = (HttpWebResponse)request.GetResponse();
-                var responseStream = response.GetResponseStream();
-
-                if (responseStream == null)
-                {
-                    throw new Exception("Response stream was null!");
-                }
-
-                var responseContent = new StreamReader(responseStream).ReadToEnd();
-
-                var serializer = new DataContractJsonSerializer(typeof (CloudPrintShare));
-                var ms = new MemoryStream(Encoding.Unicode.GetBytes(responseContent));
-                var shareJob = serializer.ReadObject(ms) as CloudPrintShare;
-
-                return shareJob;
+                return GCPServiceCall<CloudPrintShare>("share", p);
             }
             catch (Exception ex)
             {
@@ -195,19 +119,6 @@ namespace GoogleCloudPrint
         {
             try
             {
-                RefreshAccessToken();
-                var authCode = _credentials.Token.AccessToken;
-
-                var request = (HttpWebRequest) WebRequest.Create("https://www.google.com/cloudprint/submit?output=json&printerid=" + printerId);
-                request.Method = "POST";
-
-                // Setup the web request
-                request.ServicePoint.Expect100Continue = false;
-
-                // Add the headers
-                request.Headers.Add("X-CloudPrint-Proxy", _source);
-                request.Headers.Add("Authorization", "OAuth " + authCode);
-
                 var p = new PostData();
 
                 p.Parameters.Add(new PostDataParam { Name = "printerid", Value = printerId, Type = PostDataParamType.Field });
@@ -215,65 +126,11 @@ namespace GoogleCloudPrint
                 p.Parameters.Add(new PostDataParam { Name = "contentType", Value = contentType, Type = PostDataParamType.Field });
                 p.Parameters.Add(new PostDataParam { Name = "title", Value = title, Type = PostDataParamType.Field });
 
-                p.Parameters.Add(new PostDataParam 
-				{ 
-				    Name = "content",
-					Type = PostDataParamType.Field, 
-					Value = content
-				});
-                var postData = p.GetPostData();
-                var data = Encoding.UTF8.GetBytes(postData);
+                var contentValue = content;
 
-                request.ContentType = "multipart/form-data; boundary=" + p.Boundary;
+                p.Parameters.Add(new PostDataParam { Name = "content", Type = PostDataParamType.Field, Value = contentValue });
 
-                var stream = request.GetRequestStream();
-                stream.Write(data, 0, data.Length);
-                stream.Close();
-
-                HttpWebResponse response = null;
-
-                // Get response
-                try
-                {
-                    response = (HttpWebResponse) request.GetResponse();
-                }
-                catch (WebException webEx)
-                {
-                    var myResponse = webEx.Response as HttpWebResponse;
-
-                    if (myResponse != null)
-                    {
-                        var exResponseStream = myResponse.GetResponseStream();
-
-                        if (exResponseStream == null)
-                        {
-                            throw;
-                        }
-
-                        var strm = new StreamReader(exResponseStream, Encoding.UTF8);
-                        var resp = strm.ReadToEnd();
-
-                        return new CloudPrintJob { success = false, message = resp };
-                    }
-                }
-
-                if (response == null)
-                    throw new Exception("Response was null!");
-
-                var responseStream = response.GetResponseStream();
-
-                if (responseStream == null)
-                    throw new Exception("Response stream was null!");
-
-                using (var responseStreamReader = new StreamReader(responseStream))
-                {
-                    var responseContent = responseStreamReader.ReadToEnd();
-                    var serializer = new DataContractJsonSerializer(typeof (CloudPrintJob));
-                    var ms = new MemoryStream(Encoding.Unicode.GetBytes(responseContent));
-                    var printJob = serializer.ReadObject(ms) as CloudPrintJob;
-
-                    return printJob;
-                }
+                return GCPServiceCall<CloudPrintJob>("submit", p);
             }
             catch (Exception ex)
             {
@@ -283,43 +140,120 @@ namespace GoogleCloudPrint
 
         public CloudPrinters GetPrinters()
         {
-            var printers = new CloudPrinters();
-
-            RefreshAccessToken();
-            var authCode = _credentials.Token.AccessToken;
+            // clear internal data, will be reset if call succeeds
+            Printers = new List<CloudPrinter>();
 
             try
             {
-                var request = (HttpWebRequest) WebRequest.Create("https://www.google.com/cloudprint/search?output=json");
-                request.Method = "POST";
-
-                // Setup the web request
-                request.ServicePoint.Expect100Continue = false;
-
-                // Add the headers
-                request.Headers.Add("X-CloudPrint-Proxy", _source);
-                request.Headers.Add("Authorization", "OAuth " + authCode);
-
-                request.ContentType = "application/x-www-form-urlencoded";
-                request.ContentLength = 0;
-
-                var response = (HttpWebResponse) request.GetResponse();
-                var responseContent = new StreamReader(response.GetResponseStream()).ReadToEnd();
-
-                var serializer = new DataContractJsonSerializer(typeof (CloudPrinters));
-                var ms = new MemoryStream(Encoding.Unicode.GetBytes(responseContent));
-                printers = serializer.ReadObject(ms) as CloudPrinters;
-
-                if (printers != null)
+                var rv = GCPServiceCall<CloudPrinters>("search");
+                if (rv != null)
                 {
-                    Printers = printers.printers;
+                    Printers = rv.printers;
                 }
 
-                return printers;
+                return rv;
             }
             catch (Exception)
             {
-                return printers;
+                return new CloudPrinters { success = false, printers = new List<CloudPrinter>() };
+            }
+        }
+
+        public CloudPrintJob ProcessInvite(string printerId)
+        {
+            try
+            {
+                var p = new PostData();
+
+                p.Parameters.Add(new PostDataParam { Name = "printerid", Value = printerId, Type = PostDataParamType.Field });
+                p.Parameters.Add(new PostDataParam { Name = "accept", Value = "true", Type = PostDataParamType.Field });
+
+
+                return GCPServiceCall<CloudPrintJob>("processinvite", p);
+            }
+            catch (Exception ex)
+            {
+                return new CloudPrintJob() { success = false, message = ex.Message };
+            }
+        }
+
+        private T GCPServiceCall<T>(string restVerb, PostData p = null) where T : class
+        {
+            RefreshAccessToken();
+            var authCode = _credentials.Token.AccessToken;
+
+            var request = (HttpWebRequest)WebRequest.Create($"https://www.google.com/cloudprint/{restVerb}?output=json");
+            request.Method = "POST";
+
+            // Setup the web request
+            request.ServicePoint.Expect100Continue = false;
+
+            // Add the headers
+            request.Headers.Add("X-CloudPrint-Proxy", _source);
+            request.Headers.Add("Authorization", "OAuth " + authCode);
+
+            if (p == null)
+            {
+                request.ContentLength = 0;
+            }
+            else
+            {
+                var postData = p.GetPostData();
+                var data = Encoding.UTF8.GetBytes(postData);
+
+                request.ContentType = "multipart/form-data; boundary=" + p.Boundary;
+
+                var stream = request.GetRequestStream();
+                stream.Write(data, 0, data.Length);
+                stream.Close();
+            }
+
+            // Get response
+            HttpWebResponse response = null;
+            try
+            {
+                response = (HttpWebResponse)request.GetResponse();
+            }
+            catch (WebException webEx)
+            {
+                var myResponse = webEx.Response as HttpWebResponse;
+
+                if (myResponse != null)
+                {
+                    var exResponseStream = myResponse.GetResponseStream();
+
+                    if (exResponseStream == null)
+                    {
+                        throw;
+                    }
+
+                    var strm = new StreamReader(exResponseStream, Encoding.UTF8);
+                    var resp = strm.ReadToEnd();
+
+                    throw new Exception(resp);
+                }
+            }
+
+            if (response == null)
+            {
+                throw new Exception("Response was null!");
+            }
+
+            var responseStream = response.GetResponseStream();
+
+            if (responseStream == null)
+            {
+                throw new Exception("Response stream was null!");
+            }
+
+            using (var responseStreamReader = new StreamReader(responseStream))
+            {
+                var responseContent = responseStreamReader.ReadToEnd();
+                var serializer = new DataContractJsonSerializer(typeof(T));
+                var ms = new MemoryStream(Encoding.Unicode.GetBytes(responseContent));
+                var rv = serializer.ReadObject(ms) as T;
+
+                return rv;
             }
         }
 
