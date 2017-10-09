@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Apis.Auth.OAuth2;
+using Google.Apis.Json;
 using GoogleCloudPrint.Model;
 
 namespace GoogleCloudPrint
@@ -15,7 +16,7 @@ namespace GoogleCloudPrint
     public class GoogleCloudPrintService
     {
         private readonly string _source;
-        private readonly string _serviceAccountEmail;
+        private string _serviceAccountEmail;
         private readonly string _keyFilePath;
         private readonly string _keyFileSecret;
         private readonly ServiceAccountCredential _credentials;
@@ -29,14 +30,19 @@ namespace GoogleCloudPrint
             _keyFileSecret = keyFileSecret;
             _source = source;
 
-            var credentialsTask = Authorize();
+            _credentials = Authorize();
+        }
 
-            credentialsTask.Wait();
+        /// <summary>
+        /// Initializes a new instance of the <see cref="GoogleCloudPrintService"/> class.
+        /// </summary>
+        /// <param name="jsonCredencialFilePath">The json credencial file path.</param>
+        /// <param name="source">The source.</param>
+        public GoogleCloudPrintService(string jsonCredencialFilePath, string source)
+        {
+            _source = source;
 
-            if (!credentialsTask.IsFaulted)
-            {
-                _credentials = credentialsTask.Result;
-            }
+            _credentials = Authorize(jsonCredencialFilePath);
         }
 
         public Task<CloudPrinters> GetPrintersAsync()
@@ -173,7 +179,7 @@ namespace GoogleCloudPrint
             }
             catch (Exception ex)
             {
-                return new CloudPrintJob() { success = false, message = ex.Message };
+                return new CloudPrintJob { success = false, message = ex.Message };
             }
         }
 
@@ -257,19 +263,53 @@ namespace GoogleCloudPrint
             }
         }
 
-        private async Task<ServiceAccountCredential> Authorize()
+        private ServiceAccountCredential Authorize()
         {
             var certificate = new X509Certificate2(_keyFilePath, _keyFileSecret, X509KeyStorageFlags.Exportable);
 
             var credential = new ServiceAccountCredential(
-               new ServiceAccountCredential.Initializer(_serviceAccountEmail)
-               {
-                   Scopes = new[] { "https://www.googleapis.com/auth/cloudprint" }
-               }.FromCertificate(certificate));
+                new ServiceAccountCredential.Initializer(_serviceAccountEmail)
+                {
+                    Scopes = new[] { "https://www.googleapis.com/auth/cloudprint" }
+                }.FromCertificate(certificate));
 
-            await credential.RequestAccessTokenAsync(CancellationToken.None);
+            credential.RequestAccessTokenAsync(CancellationToken.None).Wait();
 
             return credential;
+        }
+
+        /// <summary>
+        /// Authorizes the specified json credential file path.
+        /// </summary>
+        /// <param name="jsonCredentialPath">The json credential file path.</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException">JSON content does not represent valid service account credentials</exception>
+        private ServiceAccountCredential Authorize(string jsonCredentialPath)
+        {
+            string[] scopes = {"https://www.googleapis.com/auth/cloudprint"};
+
+            using (var stream = new FileStream(jsonCredentialPath, FileMode.Open, FileAccess.Read))
+            {
+                var credentialParameters = NewtonsoftJsonSerializer.Instance.Deserialize<JsonCredentialParameters>(stream);
+
+                if (credentialParameters.Type != "service_account"
+                    || string.IsNullOrEmpty(credentialParameters.ClientEmail)
+                    || string.IsNullOrEmpty(credentialParameters.PrivateKey))
+                    throw new InvalidOperationException("JSON content does not represent valid service account credentials.");
+
+                _serviceAccountEmail = credentialParameters.ClientEmail;
+
+                var credential = new ServiceAccountCredential(
+                    new ServiceAccountCredential.Initializer(credentialParameters.ClientEmail)
+                    {
+                        Scopes = scopes
+                    }.FromPrivateKey(credentialParameters.PrivateKey));
+
+                // this does the magic for webform that need sync results and fails with async execution
+                credential.RequestAccessTokenAsync(CancellationToken.None).Wait();
+
+                return credential;
+            }
         }
 
         internal class PostData
